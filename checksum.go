@@ -9,15 +9,29 @@ import (
 	//"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"log"
+	"os"
+	"path"
 )
 
 //go:embed Version.dat
 var Version string
 
-const Hmargin = 6
+const (
+	Hmargin = 6
+	Icon    = "checksum.svg"
+)
 
 func main() {
 	gtk.Init(nil)
+	app := getApp()
+	mainWindow := NewMainWindow()
+	app.Add(mainWindow.container)
+	app.ShowAll()
+	gtk.Main()
+
+}
+
+func getApp() *gtk.Window {
 	app, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
 		log.Fatal("Failed to create window:", err)
@@ -25,12 +39,28 @@ func main() {
 	app.Connect("destroy", func() { gtk.MainQuit() })
 	app.SetTitle("Checksum")
 	app.SetSizeRequest(360, 120)
-	// TODO icon
-	mainWindow := NewMainWindow()
-	app.Add(mainWindow.container)
-	app.ShowAll()
-	gtk.Main()
+	addIcon(app)
+	return app
+}
 
+func addIcon(app *gtk.Window) {
+	filename, err := os.Executable()
+	if err == nil {
+		filename = path.Join(path.Dir(filename), Icon)
+		if !PathExists(filename) {
+			filename = ""
+			folder, err := os.Getwd()
+			if err == nil {
+				filename = path.Join(folder, Icon)
+			}
+		}
+		if filename != "" {
+			err := app.SetIconFromFile(filename)
+			if err != nil {
+				log.Println("Failed to load icon:", err)
+			}
+		}
+	}
 }
 
 type MainWindow struct {
@@ -49,12 +79,14 @@ type MainWindow struct {
 }
 
 func NewMainWindow() *MainWindow {
-	mainWindow := makeMainWindow()
-	layoutMainWindow(mainWindow)
+	mainWindow := &MainWindow{}
+	mainWindow.makeWidgets()
+	mainWindow.makeLayout()
+	mainWindow.makeConnections()
 	return mainWindow
 }
 
-func makeMainWindow() *MainWindow {
+func (me *MainWindow) makeWidgets() {
 	fileButton, err := gtk.ButtonNewWithMnemonic("_File...")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -109,27 +141,54 @@ func makeMainWindow() *MainWindow {
 		label.SetHExpand(true)
 		label.SetMarginEnd(Hmargin)
 	}
-	return &MainWindow{nil, fileButton, fileEntry,
-		expectedLabel, expectedEntry, md5LabelLabel, md5Label,
-		sha1LabelLabel, sha1Label, sha256Label, sha256LabelLabel,
-		statusLabel}
+	me.fileButton = fileButton
+	me.fileEntry = fileEntry
+	me.expectedLabel = expectedLabel
+	me.expectedEntry = expectedEntry
+	me.md5LabelLabel = md5LabelLabel
+	me.md5Label = md5Label
+	me.sha1LabelLabel = sha1LabelLabel
+	me.sha1Label = sha1Label
+	me.sha256Label = sha256Label
+	me.sha256LabelLabel = sha256LabelLabel
+	me.statusLabel = statusLabel
 }
 
-func layoutMainWindow(mainWindow *MainWindow) {
+func (me *MainWindow) makeLayout() {
 	grid, err := gtk.GridNew()
 	if err != nil {
 		log.Fatal("Failed to create grid:", err)
 	}
-	grid.Attach(mainWindow.fileButton, 0, 0, 1, 1)
-	grid.Attach(mainWindow.fileEntry, 1, 0, 1, 1)
-	grid.Attach(mainWindow.expectedLabel, 0, 1, 1, 1)
-	grid.Attach(mainWindow.expectedEntry, 1, 1, 1, 1)
-	grid.Attach(mainWindow.md5LabelLabel, 0, 2, 1, 1)
-	grid.Attach(mainWindow.md5Label, 1, 2, 1, 1)
-	grid.Attach(mainWindow.sha1LabelLabel, 0, 3, 1, 1)
-	grid.Attach(mainWindow.sha1Label, 1, 3, 1, 1)
-	grid.Attach(mainWindow.sha256LabelLabel, 0, 4, 1, 1)
-	grid.Attach(mainWindow.sha256Label, 1, 4, 1, 1)
-	grid.Attach(mainWindow.statusLabel, 0, 5, 2, 1)
-	mainWindow.container = &grid.Container.Widget
+	grid.Attach(me.fileButton, 0, 0, 1, 1)
+	grid.Attach(me.fileEntry, 1, 0, 1, 1)
+	grid.Attach(me.expectedLabel, 0, 1, 1, 1)
+	grid.Attach(me.expectedEntry, 1, 1, 1, 1)
+	grid.Attach(me.md5LabelLabel, 0, 2, 1, 1)
+	grid.Attach(me.md5Label, 1, 2, 1, 1)
+	grid.Attach(me.sha1LabelLabel, 0, 3, 1, 1)
+	grid.Attach(me.sha1Label, 1, 3, 1, 1)
+	grid.Attach(me.sha256LabelLabel, 0, 4, 1, 1)
+	grid.Attach(me.sha256Label, 1, 4, 1, 1)
+	grid.Attach(me.statusLabel, 0, 5, 2, 1)
+	me.container = &grid.Container.Widget
+}
+
+// TODO Esc → quit
+func (me *MainWindow) makeConnections() {
+	me.fileButton.Connect("activate", func(_ *gtk.Button) bool {
+		log.Println("TODO show file choose dialog") // TODO
+		// If user chooses then compute hashes each using a function set in
+		// a goroutine for glib.IdleAdd: see
+		// ~/zip/gtk-examples/goroutines/goroutines.go
+		return true
+	})
+	me.expectedLabel.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
+		me.expectedEntry.GrabFocus()
+		return true
+	})
+}
+
+func PathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
