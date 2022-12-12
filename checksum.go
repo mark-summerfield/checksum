@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	//"fmt"
 	//"github.com/gotk3/gotk3/glib"
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 	"log"
 	"os"
@@ -138,9 +139,13 @@ func (me *MainWindow) makeLayout() {
 	me.container = &grid.Container.Widget
 }
 
-// TODO Esc → quit
 func (me *MainWindow) makeConnections() {
 	me.window.Connect("destroy", func(_ *gtk.Window) { me.onQuit() })
+	me.window.Connect("key-press-event", func(_ *gtk.Window,
+		event *gdk.Event) {
+		keyEvent := gdk.EventKey{event}
+		me.onKey(&keyEvent)
+	})
 	me.fileButton.Connect("activate", func(_ *gtk.Button) bool {
 		log.Println("TODO show file choose dialog") // TODO
 		// If user chooses then compute hashes each using a function set in
@@ -177,6 +182,10 @@ func (me *MainWindow) addIcon() {
 func (me *MainWindow) onQuit() {
 	log.Println("MainWindow.onQuit") // TODO delete
 	gtk.MainQuit()
+}
+
+func (me *MainWindow) onKey(event *gdk.EventKey) {
+	log.Println("Event", event) // TODO Esc → quit
 }
 
 func PathExists(path string) bool {
