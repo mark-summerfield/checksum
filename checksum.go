@@ -23,47 +23,14 @@ const (
 
 func main() {
 	gtk.Init(nil)
-	app := getApp()
-	mainWindow := NewMainWindow()
-	app.Add(mainWindow.container)
-	app.ShowAll()
+	mainWindow := NewMainWindow("Checksum")
+	mainWindow.window.ShowAll()
 	gtk.Main()
 
 }
 
-func getApp() *gtk.Window {
-	app, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	if err != nil {
-		log.Fatal("Failed to create window:", err)
-	}
-	app.Connect("destroy", func() { gtk.MainQuit() })
-	app.SetTitle("Checksum")
-	app.SetSizeRequest(360, 120)
-	addIcon(app)
-	return app
-}
-
-func addIcon(app *gtk.Window) {
-	filename, err := os.Executable()
-	if err == nil {
-		filename = path.Join(path.Dir(filename), Icon)
-		if !PathExists(filename) {
-			filename = ""
-			folder, err := os.Getwd()
-			if err == nil {
-				filename = path.Join(folder, Icon)
-			}
-		}
-		if filename != "" {
-			err := app.SetIconFromFile(filename)
-			if err != nil {
-				log.Println("Failed to load icon:", err)
-			}
-		}
-	}
-}
-
 type MainWindow struct {
+	window           *gtk.Window
 	container        *gtk.Widget
 	fileButton       *gtk.Button
 	fileEntry        *gtk.Entry
@@ -78,80 +45,78 @@ type MainWindow struct {
 	statusLabel      *gtk.Label
 }
 
-func NewMainWindow() *MainWindow {
+func NewMainWindow(title string) *MainWindow {
 	mainWindow := &MainWindow{}
 	mainWindow.makeWidgets()
 	mainWindow.makeLayout()
 	mainWindow.makeConnections()
+	mainWindow.window.SetTitle(title)
+	mainWindow.window.SetSizeRequest(360, 120)
+	mainWindow.window.Add(mainWindow.container)
+	mainWindow.addIcon()
 	return mainWindow
 }
 
 func (me *MainWindow) makeWidgets() {
-	fileButton, err := gtk.ButtonNewWithMnemonic("_File...")
+	var err error
+	me.window, err = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	if err != nil {
+		log.Fatal("Failed to create window:", err)
+	}
+	me.fileButton, err = gtk.ButtonNewWithMnemonic("_File...")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	fileButton.SetMarginEnd(Hmargin)
-	fileEntry, err := gtk.EntryNew()
+	me.fileButton.SetMarginEnd(Hmargin)
+	me.fileEntry, err = gtk.EntryNew()
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	expectedLabel, err := gtk.LabelNewWithMnemonic("_Expected")
+	me.fileEntry.SetHExpand(true)
+	me.expectedLabel, err = gtk.LabelNewWithMnemonic("_Expected")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	expectedLabel.SetMarginEnd(Hmargin)
-	expectedEntry, err := gtk.EntryNew()
+	me.expectedLabel.SetMarginEnd(Hmargin)
+	me.expectedEntry, err = gtk.EntryNew()
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	md5LabelLabel, err := gtk.LabelNew("MD5")
+	me.expectedEntry.SetHExpand(true)
+	me.md5LabelLabel, err = gtk.LabelNew("MD5")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	md5Label, err := gtk.LabelNew("")
+	me.md5Label, err = gtk.LabelNew("")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	sha1LabelLabel, err := gtk.LabelNew("SHA1")
+	me.md5Label.SetHExpand(true)
+	me.md5Label.SetMarginEnd(Hmargin)
+	me.sha1LabelLabel, err = gtk.LabelNew("SHA1")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	sha1Label, err := gtk.LabelNew("")
+	me.sha1Label, err = gtk.LabelNew("")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	sha256LabelLabel, err := gtk.LabelNew("SHA256")
+	me.sha1Label.SetHExpand(true)
+	me.sha1Label.SetMarginEnd(Hmargin)
+	me.sha256LabelLabel, err = gtk.LabelNew("SHA256")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	sha256Label, err := gtk.LabelNew("")
+	me.sha256Label, err = gtk.LabelNew("")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	statusLabel, err := gtk.LabelNew("Choose a file...")
+	me.sha256Label.SetHExpand(true)
+	me.sha256Label.SetMarginEnd(Hmargin)
+	me.statusLabel, err = gtk.LabelNew("Choose a file...")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	statusLabel.SetHExpand(true)
-	for _, entry := range []*gtk.Entry{fileEntry, expectedEntry} {
-		entry.SetHExpand(true)
-	}
-	for _, label := range []*gtk.Label{md5Label, sha1Label, sha256Label} {
-		label.SetHExpand(true)
-		label.SetMarginEnd(Hmargin)
-	}
-	me.fileButton = fileButton
-	me.fileEntry = fileEntry
-	me.expectedLabel = expectedLabel
-	me.expectedEntry = expectedEntry
-	me.md5LabelLabel = md5LabelLabel
-	me.md5Label = md5Label
-	me.sha1LabelLabel = sha1LabelLabel
-	me.sha1Label = sha1Label
-	me.sha256Label = sha256Label
-	me.sha256LabelLabel = sha256LabelLabel
-	me.statusLabel = statusLabel
 }
 
 func (me *MainWindow) makeLayout() {
@@ -175,6 +140,7 @@ func (me *MainWindow) makeLayout() {
 
 // TODO Esc → quit
 func (me *MainWindow) makeConnections() {
+	me.window.Connect("destroy", func(_ *gtk.Window) { me.onQuit() })
 	me.fileButton.Connect("activate", func(_ *gtk.Button) bool {
 		log.Println("TODO show file choose dialog") // TODO
 		// If user chooses then compute hashes each using a function set in
@@ -186,6 +152,31 @@ func (me *MainWindow) makeConnections() {
 		me.expectedEntry.GrabFocus()
 		return true
 	})
+}
+
+func (me *MainWindow) addIcon() {
+	filename, err := os.Executable()
+	if err == nil {
+		filename = path.Join(path.Dir(filename), Icon)
+		if !PathExists(filename) {
+			filename = ""
+			folder, err := os.Getwd()
+			if err == nil {
+				filename = path.Join(folder, Icon)
+			}
+		}
+		if filename != "" {
+			err := me.window.SetIconFromFile(filename)
+			if err != nil {
+				log.Println("Failed to load icon:", err)
+			}
+		}
+	}
+}
+
+func (me *MainWindow) onQuit() {
+	log.Println("MainWindow.onQuit") // TODO delete
+	gtk.MainQuit()
 }
 
 func PathExists(path string) bool {
