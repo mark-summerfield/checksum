@@ -146,12 +146,17 @@ func (me *MainWindow) makeConnections() {
 		keyEvent := gdk.EventKey{event}
 		me.onKey(&keyEvent)
 	})
-	me.fileButton.Connect("activate", func(_ *gtk.Button) bool {
-		log.Println("TODO show file choose dialog") // TODO
-		// If user chooses then compute hashes each using a function set in
-		// a goroutine for glib.IdleAdd: see
-		// ~/zip/gtk-examples/goroutines/goroutines.go
-		return true
+	me.fileButton.Connect("clicked", func() {
+		fileChooserDlg, err := gtk.FileChooserNativeDialogNew("Open",
+			me.window, gtk.FILE_CHOOSER_ACTION_OPEN, "_Open", "_Cancel")
+		if err != nil {
+			log.Fatal("Failed to create file chooser dialog:", err)
+		}
+		reply := fileChooserDlg.NativeDialog.Run()
+		if gtk.ResponseType(reply) == gtk.RESPONSE_ACCEPT {
+			filename := fileChooserDlg.GetFilename()
+			me.onNewFile(filename)
+		}
 	})
 	me.expectedLabel.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
 		me.expectedEntry.GrabFocus()
@@ -180,12 +185,16 @@ func (me *MainWindow) addIcon() {
 }
 
 func (me *MainWindow) onQuit() {
-	log.Println("MainWindow.onQuit") // TODO delete
+	// Here is where any state would be saved.
 	gtk.MainQuit()
 }
 
 func (me *MainWindow) onKey(event *gdk.EventKey) {
 	log.Println("Event", event) // TODO Esc → quit
+}
+
+func (me *MainWindow) onNewFile(filename string) {
+	log.Println("onNewFile", filename) // TODO set filename in label & read hashes using glib.IdleAdd()
 }
 
 func PathExists(path string) bool {
