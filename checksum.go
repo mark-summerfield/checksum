@@ -143,8 +143,8 @@ func (me *MainWindow) makeConnections() {
 	me.window.Connect("destroy", func(_ *gtk.Window) { me.onQuit() })
 	me.window.Connect("key-press-event", func(_ *gtk.Window,
 		event *gdk.Event) {
-		keyEvent := gdk.EventKey{event}
-		me.onKey(&keyEvent)
+		keyEvent := &gdk.EventKey{Event: event}
+		me.onKey(keyEvent)
 	})
 	me.fileButton.Connect("clicked", func() {
 		fileChooserDlg, err := gtk.FileChooserNativeDialogNew("Open",
