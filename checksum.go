@@ -190,7 +190,9 @@ func (me *MainWindow) onQuit() {
 }
 
 func (me *MainWindow) onKey(event *gdk.EventKey) {
-	log.Println("Event", event) // TODO Esc → quit
+	if event.KeyVal() == gdk.KEY_Escape {
+		me.onQuit()
+	}
 }
 
 func (me *MainWindow) onNewFile(filename string) {
