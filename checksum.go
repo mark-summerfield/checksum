@@ -196,7 +196,9 @@ func (me *MainWindow) onKey(event *gdk.EventKey) {
 }
 
 func (me *MainWindow) onNewFile(filename string) {
-	log.Println("onNewFile", filename) // TODO set filename in label & read hashes using glib.IdleAdd()
+	me.fileEntry.SetText(filename)
+	me.expectedEntry.GrabFocus()
+	log.Println("onNewFile", filename) // TODO read hashes using glib.IdleAdd()
 }
 
 func PathExists(path string) bool {
