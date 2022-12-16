@@ -4,11 +4,16 @@
 package main
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
 	_ "embed"
-	//"fmt"
-	//"github.com/gotk3/gotk3/glib"
+	"fmt"
 	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"hash"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -20,6 +25,9 @@ var Version string
 const (
 	Hmargin = 6
 	Icon    = "checksum.svg"
+	MD5     = "MD5"
+	SHA1    = "SHA1"
+	SHA256  = "SHA256"
 )
 
 func main() {
@@ -58,6 +66,7 @@ func NewMainWindow(title string) *MainWindow {
 	return mainWindow
 }
 
+// TODO left-align hash widgets
 func (me *MainWindow) makeWidgets() {
 	var err error
 	me.window, err = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
@@ -195,10 +204,48 @@ func (me *MainWindow) onKey(event *gdk.EventKey) {
 	}
 }
 
+// TODO clear statusLabel once all hashes have been computed
 func (me *MainWindow) onNewFile(filename string) {
 	me.fileEntry.SetText(filename)
 	me.expectedEntry.GrabFocus()
-	log.Println("onNewFile", filename) // TODO read hashes using glib.IdleAdd()
+	me.statusLabel.SetText(fmt.Sprintf("Computing hashes for %s", filename))
+	go func() {
+		glib.IdleAdd(func() bool {
+			calcHash(filename, MD5, me.md5Label)
+			return false
+		})
+		glib.IdleAdd(func() bool {
+			calcHash(filename, SHA1, me.sha1Label)
+			return false
+		})
+		glib.IdleAdd(func() bool {
+			calcHash(filename, SHA256, me.sha256Label)
+			return false
+		})
+	}()
+}
+
+func calcHash(filename, algorithm string, label *gtk.Label) {
+	file, err := os.Open(filename)
+	if err != nil {
+		label.SetText(fmt.Sprintf("Failed to open %s: %s", filename, err))
+		return
+	}
+	defer file.Close()
+	var h hash.Hash
+	if algorithm == MD5 {
+		h = md5.New()
+	} else if algorithm == SHA1 {
+		h = sha1.New()
+	} else {
+		h = sha256.New()
+	}
+	if _, err := io.Copy(h, file); err != nil {
+		label.SetText(fmt.Sprintf("Failed to compute %s: %s", algorithm,
+			err))
+		return
+	}
+	label.SetText(fmt.Sprintf("%X", h.Sum(nil)))
 }
 
 func PathExists(path string) bool {
