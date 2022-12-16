@@ -17,17 +17,19 @@ import (
 	"log"
 	"os"
 	"path"
+	"sync"
 )
 
 //go:embed Version.dat
 var Version string
 
 const (
-	Hmargin = 6
-	Icon    = "checksum.svg"
-	MD5     = "MD5"
-	SHA1    = "SHA1"
-	SHA256  = "SHA256"
+	Margin    = 6
+	Icon      = "checksum.svg"
+	MD5       = "MD5"
+	SHA1      = "SHA1"
+	SHA256    = "SHA256"
+	MaxHashes = 3
 )
 
 func main() {
@@ -46,11 +48,11 @@ type MainWindow struct {
 	expectedLabel    *gtk.Label
 	expectedEntry    *gtk.Entry
 	md5LabelLabel    *gtk.Label
-	md5Label         *gtk.Label
+	md5Label         *gtk.Frame
 	sha1LabelLabel   *gtk.Label
-	sha1Label        *gtk.Label
-	sha256Label      *gtk.Label
+	sha1Label        *gtk.Frame
 	sha256LabelLabel *gtk.Label
+	sha256Label      *gtk.Frame
 	statusLabel      *gtk.Label
 }
 
@@ -66,7 +68,6 @@ func NewMainWindow(title string) *MainWindow {
 	return mainWindow
 }
 
-// TODO left-align hash widgets
 func (me *MainWindow) makeWidgets() {
 	var err error
 	me.window, err = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
@@ -77,7 +78,7 @@ func (me *MainWindow) makeWidgets() {
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.fileButton.SetMarginEnd(Hmargin)
+	me.fileButton.SetMarginEnd(Margin)
 	me.fileEntry, err = gtk.EntryNew()
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -87,7 +88,7 @@ func (me *MainWindow) makeWidgets() {
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.expectedLabel.SetMarginEnd(Hmargin)
+	me.expectedLabel.SetMarginEnd(Margin)
 	me.expectedEntry, err = gtk.EntryNew()
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -97,36 +98,39 @@ func (me *MainWindow) makeWidgets() {
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.md5Label, err = gtk.LabelNew("")
+	me.md5Label, err = gtk.FrameNew("")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.md5Label.SetHExpand(true)
-	me.md5Label.SetMarginEnd(Hmargin)
+	prepareFrame(me.md5Label)
 	me.sha1LabelLabel, err = gtk.LabelNew("SHA1")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.sha1Label, err = gtk.LabelNew("")
+	me.sha1Label, err = gtk.FrameNew("")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.sha1Label.SetHExpand(true)
-	me.sha1Label.SetMarginEnd(Hmargin)
+	prepareFrame(me.sha1Label)
 	me.sha256LabelLabel, err = gtk.LabelNew("SHA256")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.sha256Label, err = gtk.LabelNew("")
+	me.sha256Label, err = gtk.FrameNew("")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.sha256Label.SetHExpand(true)
-	me.sha256Label.SetMarginEnd(Hmargin)
+	prepareFrame(me.sha256Label)
 	me.statusLabel, err = gtk.LabelNew("Choose a file...")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
+}
+
+func prepareFrame(label *gtk.Frame) {
+	label.SetHExpand(true)
+	label.SetMarginEnd(Margin)
+	label.SetHAlign(gtk.ALIGN_START)
 }
 
 func (me *MainWindow) makeLayout() {
@@ -134,6 +138,7 @@ func (me *MainWindow) makeLayout() {
 	if err != nil {
 		log.Fatal("Failed to create grid:", err)
 	}
+	grid.SetRowSpacing(Margin)
 	grid.Attach(me.fileButton, 0, 0, 1, 1)
 	grid.Attach(me.fileEntry, 1, 0, 1, 1)
 	grid.Attach(me.expectedLabel, 0, 1, 1, 1)
@@ -204,31 +209,45 @@ func (me *MainWindow) onKey(event *gdk.EventKey) {
 	}
 }
 
-// TODO clear statusLabel once all hashes have been computed
 func (me *MainWindow) onNewFile(filename string) {
 	me.fileEntry.SetText(filename)
 	me.expectedEntry.GrabFocus()
 	me.statusLabel.SetText(fmt.Sprintf("Computing hashes for %s", filename))
 	go func() {
-		glib.IdleAdd(func() bool {
-			calcHash(filename, MD5, me.md5Label)
-			return false
-		})
-		glib.IdleAdd(func() bool {
-			calcHash(filename, SHA1, me.sha1Label)
-			return false
-		})
-		glib.IdleAdd(func() bool {
-			calcHash(filename, SHA256, me.sha256Label)
-			return false
-		})
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			glib.IdleAdd(func() bool {
+				calcHash(filename, MD5, me.md5Label)
+				return false
+			})
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			glib.IdleAdd(func() bool {
+				calcHash(filename, SHA1, me.sha1Label)
+				return false
+			})
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			glib.IdleAdd(func() bool {
+				calcHash(filename, SHA256, me.sha256Label)
+				return false
+			})
+		}()
+		wg.Wait()
+		me.statusLabel.SetText("Done. Choose another file...")
 	}()
 }
 
-func calcHash(filename, algorithm string, label *gtk.Label) {
+func calcHash(filename, algorithm string, label *gtk.Frame) {
 	file, err := os.Open(filename)
 	if err != nil {
-		label.SetText(fmt.Sprintf("Failed to open %s: %s", filename, err))
+		label.SetLabel(fmt.Sprintf("Failed to open %s: %s", filename, err))
 		return
 	}
 	defer file.Close()
@@ -241,11 +260,11 @@ func calcHash(filename, algorithm string, label *gtk.Label) {
 		h = sha256.New()
 	}
 	if _, err := io.Copy(h, file); err != nil {
-		label.SetText(fmt.Sprintf("Failed to compute %s: %s", algorithm,
+		label.SetLabel(fmt.Sprintf("Failed to compute %s: %s", algorithm,
 			err))
 		return
 	}
-	label.SetText(fmt.Sprintf("%X", h.Sum(nil)))
+	label.SetLabel(fmt.Sprintf(" %X ", h.Sum(nil)))
 }
 
 func PathExists(path string) bool {
