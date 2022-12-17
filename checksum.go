@@ -166,24 +166,8 @@ func (me *MainWindow) makeConnections(filename string) {
 		})
 	}
 	me.window.Connect("destroy", func(_ *gtk.Window) { me.onQuit() })
-	me.window.Connect("key-press-event", func(_ *gtk.Window,
-		event *gdk.Event) {
-		keyEvent := &gdk.EventKey{Event: event}
-		me.onKey(keyEvent)
-	})
-	me.fileButton.Connect("clicked", func() {
-		fileChooserDlg, err := gtk.FileChooserNativeDialogNew(
-			"Checksum Choose File", me.window, gtk.FILE_CHOOSER_ACTION_OPEN,
-			"_Open", "_Cancel")
-		if err != nil {
-			log.Fatal("Failed to create file chooser dialog:", err)
-		}
-		reply := fileChooserDlg.NativeDialog.Run()
-		if gtk.ResponseType(reply) == gtk.RESPONSE_ACCEPT {
-			filename := fileChooserDlg.GetFilename()
-			me.onNewFile(filename)
-		}
-	})
+	me.window.Connect("key-press-event", me.onKeyPress)
+	me.fileButton.Connect("clicked", me.onFileButton)
 	for _, signal := range []string{"changed", "delete-text", "insert-text",
 		"activate", "paste-clipboard"} {
 		me.expectedEntry.Connect(signal, func(_ *gtk.Entry) bool {
@@ -222,9 +206,24 @@ func (me *MainWindow) onQuit() {
 	gtk.MainQuit()
 }
 
-func (me *MainWindow) onKey(event *gdk.EventKey) {
-	if event.KeyVal() == gdk.KEY_Escape {
+func (me *MainWindow) onKeyPress(_ *gtk.Window, event *gdk.Event) {
+	keyEvent := &gdk.EventKey{Event: event}
+	if keyEvent.KeyVal() == gdk.KEY_Escape {
 		me.onQuit()
+	}
+}
+
+func (me *MainWindow) onFileButton() {
+	fileChooserDlg, err := gtk.FileChooserNativeDialogNew(
+		"Checksum Choose File", me.window, gtk.FILE_CHOOSER_ACTION_OPEN,
+		"_Open", "_Cancel")
+	if err != nil {
+		log.Fatal("Failed to create file chooser dialog:", err)
+	}
+	reply := fileChooserDlg.NativeDialog.Run()
+	if gtk.ResponseType(reply) == gtk.RESPONSE_ACCEPT {
+		filename := fileChooserDlg.GetFilename()
+		me.onNewFile(filename)
 	}
 }
 
