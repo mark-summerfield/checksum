@@ -134,7 +134,8 @@ func (me *MainWindow) makeWidgets() {
 
 func prepareFrame(frame *gtk.Frame) {
 	frame.SetHExpand(true)
-	frame.SetMarginEnd(Margin)
+	frame.SetBorderWidth(Margin / 2)
+	frame.SetShadowType(gtk.SHADOW_IN)
 	frame.SetHAlign(gtk.ALIGN_START)
 }
 
@@ -171,8 +172,9 @@ func (me *MainWindow) makeConnections(filename string) {
 		me.onKey(keyEvent)
 	})
 	me.fileButton.Connect("clicked", func() {
-		fileChooserDlg, err := gtk.FileChooserNativeDialogNew("Open",
-			me.window, gtk.FILE_CHOOSER_ACTION_OPEN, "_Open", "_Cancel")
+		fileChooserDlg, err := gtk.FileChooserNativeDialogNew(
+			"Checksum Choose File", me.window, gtk.FILE_CHOOSER_ACTION_OPEN,
+			"_Open", "_Cancel")
 		if err != nil {
 			log.Fatal("Failed to create file chooser dialog:", err)
 		}
