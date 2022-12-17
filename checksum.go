@@ -53,10 +53,13 @@ type MainWindow struct {
 	expectedEntry    *gtk.Entry
 	md5LabelLabel    *gtk.Label
 	md5Frame         *gtk.Frame
+	md5Label         *gtk.Label
 	sha1LabelLabel   *gtk.Label
 	sha1Frame        *gtk.Frame
+	sha1Label        *gtk.Label
 	sha256LabelLabel *gtk.Label
 	sha256Frame      *gtk.Frame
+	sha256Label      *gtk.Label
 	statusLabel      *gtk.Label
 }
 
@@ -107,6 +110,12 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	prepareFrame(me.md5Frame)
+	me.md5Label, err = gtk.LabelNew("")
+	if err != nil {
+		log.Fatal("Failed to create widget:", err)
+	}
+	me.md5Label.SetHAlign(gtk.ALIGN_START)
+	me.md5Frame.Add(me.md5Label)
 	me.sha1LabelLabel, err = gtk.LabelNew("SHA1")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -116,6 +125,12 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	prepareFrame(me.sha1Frame)
+	me.sha1Label, err = gtk.LabelNew("")
+	if err != nil {
+		log.Fatal("Failed to create widget:", err)
+	}
+	me.sha1Label.SetHAlign(gtk.ALIGN_START)
+	me.sha1Frame.Add(me.sha1Label)
 	me.sha256LabelLabel, err = gtk.LabelNew("SHA256")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -125,6 +140,12 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	prepareFrame(me.sha256Frame)
+	me.sha256Label, err = gtk.LabelNew("")
+	if err != nil {
+		log.Fatal("Failed to create widget:", err)
+	}
+	me.sha256Label.SetHAlign(gtk.ALIGN_START)
+	me.sha256Frame.Add(me.sha256Label)
 	me.statusLabel, err = gtk.LabelNew("Choose a file...")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -136,7 +157,6 @@ func prepareFrame(frame *gtk.Frame) {
 	frame.SetHExpand(true)
 	frame.SetBorderWidth(Margin / 2)
 	frame.SetShadowType(gtk.SHADOW_IN)
-	frame.SetHAlign(gtk.ALIGN_START)
 }
 
 func (me *MainWindow) makeLayout() {
@@ -229,19 +249,20 @@ func (me *MainWindow) onFileButton() {
 
 func (me *MainWindow) onNewFile(filename string) {
 	me.fileEntry.SetText(filename)
-	for _, frame := range []*gtk.Frame{me.md5Frame, me.sha1Frame,
-		me.sha256Frame} {
-		frame.SetLabel("")
+	for _, label := range []*gtk.Label{me.md5Label, me.sha1Label,
+		me.sha256Label} {
+		label.SetLabel("")
 	}
 	me.statusLabel.SetText(fmt.Sprintf("Computing hashes for %s", filename))
 	me.expectedEntry.GrabFocus()
+	me.setCursor("wait")
 	go func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			glib.IdleAdd(func() bool {
-				calcHash(filename, MD5, me.md5Frame)
+				calcHash(filename, MD5, me.md5Label)
 				return false
 			})
 		}()
@@ -249,7 +270,7 @@ func (me *MainWindow) onNewFile(filename string) {
 		go func() {
 			defer wg.Done()
 			glib.IdleAdd(func() bool {
-				calcHash(filename, SHA1, me.sha1Frame)
+				calcHash(filename, SHA1, me.sha1Label)
 				return false
 			})
 		}()
@@ -257,7 +278,7 @@ func (me *MainWindow) onNewFile(filename string) {
 		go func() {
 			defer wg.Done()
 			glib.IdleAdd(func() bool {
-				calcHash(filename, SHA256, me.sha256Frame)
+				calcHash(filename, SHA256, me.sha256Label)
 				return false
 			})
 		}()
@@ -267,6 +288,7 @@ func (me *MainWindow) onNewFile(filename string) {
 		go func() {
 			glib.IdleAdd(func() bool {
 				me.onChange()
+				me.setCursor("default")
 				return false
 			})
 		}()
@@ -281,7 +303,8 @@ func (me *MainWindow) onChange() {
 	}
 	if expected != "" {
 		expected = strings.TrimSpace(strings.ToLower(expected))
-		if h := me.md5Frame.GetLabel(); strings.TrimSpace(h) == expected {
+		if h, err := me.md5Label.GetText(); err == nil &&
+			strings.TrimSpace(h) == expected {
 			me.statusLabel.SetText("Expected equals MD5")
 			return
 		}
@@ -299,10 +322,23 @@ func (me *MainWindow) onChange() {
 	}
 }
 
-func calcHash(filename, algorithm string, label *gtk.Frame) {
+func (me *MainWindow) setCursor(name string) {
+	display, err := gdk.DisplayGetDefault()
+	if err == nil {
+		cursor, err := gdk.CursorNewFromName(display, name)
+		if err == nil {
+			window, err := me.container.GetWindow()
+			if err == nil {
+				window.SetCursor(cursor)
+			}
+		}
+	}
+}
+
+func calcHash(filename, algorithm string, label *gtk.Label) {
 	file, err := os.Open(filename)
 	if err != nil {
-		label.SetLabel(fmt.Sprintf("Failed to open %s: %s", filename, err))
+		label.SetText(fmt.Sprintf("Failed to open %s: %s", filename, err))
 		return
 	}
 	defer file.Close()
@@ -315,11 +351,11 @@ func calcHash(filename, algorithm string, label *gtk.Frame) {
 		h = sha256.New()
 	}
 	if _, err := io.Copy(h, file); err != nil {
-		label.SetLabel(fmt.Sprintf("Failed to compute %s: %s", algorithm,
+		label.SetText(fmt.Sprintf("Failed to compute %s: %s", algorithm,
 			err))
 		return
 	}
-	label.SetLabel(fmt.Sprintf(" %x ", h.Sum(nil)))
+	label.SetText(fmt.Sprintf(" %x ", h.Sum(nil)))
 }
 
 func PathExists(path string) bool {
