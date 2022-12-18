@@ -114,7 +114,7 @@ func (me *MainWindow) makeWidgets() {
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.md5Label.SetHAlign(gtk.ALIGN_START)
+	prepareLabel(me.md5Label)
 	me.md5Frame.Add(me.md5Label)
 	me.sha1LabelLabel, err = gtk.LabelNew("SHA1")
 	if err != nil {
@@ -129,7 +129,7 @@ func (me *MainWindow) makeWidgets() {
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.sha1Label.SetHAlign(gtk.ALIGN_START)
+	prepareLabel(me.sha1Label)
 	me.sha1Frame.Add(me.sha1Label)
 	me.sha256LabelLabel, err = gtk.LabelNew("SHA256")
 	if err != nil {
@@ -144,7 +144,7 @@ func (me *MainWindow) makeWidgets() {
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
-	me.sha256Label.SetHAlign(gtk.ALIGN_START)
+	prepareLabel(me.sha256Label)
 	me.sha256Frame.Add(me.sha256Label)
 	me.statusLabel, err = gtk.LabelNew("Choose a file...")
 	if err != nil {
@@ -157,6 +157,11 @@ func prepareFrame(frame *gtk.Frame) {
 	frame.SetHExpand(true)
 	frame.SetBorderWidth(Margin / 2)
 	frame.SetShadowType(gtk.SHADOW_IN)
+}
+
+func prepareLabel(label *gtk.Label) {
+	label.SetHAlign(gtk.ALIGN_START)
+	label.SetSelectable(true)
 }
 
 func (me *MainWindow) makeLayout() {
@@ -308,11 +313,13 @@ func (me *MainWindow) onChange() {
 			me.statusLabel.SetText("Expected equals MD5")
 			return
 		}
-		if h := me.sha1Frame.GetLabel(); strings.TrimSpace(h) == expected {
+		if h, err := me.sha1Label.GetText(); err == nil &&
+			strings.TrimSpace(h) == expected {
 			me.statusLabel.SetText("Expected equals SHA1")
 			return
 		}
-		if h := me.sha256Frame.GetLabel(); strings.TrimSpace(h) == expected {
+		if h, err := me.sha256Label.GetText(); err == nil &&
+			strings.TrimSpace(h) == expected {
 			me.statusLabel.SetText("Expected equals SHA256")
 			return
 		}
