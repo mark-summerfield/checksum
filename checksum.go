@@ -45,22 +45,22 @@ func main() {
 }
 
 type MainWindow struct {
-	window           *gtk.Window
-	container        *gtk.Widget
-	fileButton       *gtk.Button
-	fileEntry        *gtk.Entry
-	expectedLabel    *gtk.Label
-	expectedEntry    *gtk.Entry
-	md5LabelLabel    *gtk.Label
-	md5Frame         *gtk.Frame
-	md5Entry         *gtk.Entry
-	sha1LabelLabel   *gtk.Label
-	sha1Frame        *gtk.Frame
-	sha1Entry        *gtk.Entry
-	sha256LabelLabel *gtk.Label
-	sha256Frame      *gtk.Frame
-	sha256Entry      *gtk.Entry
-	statusLabel      *gtk.Label
+	window        *gtk.Window
+	container     *gtk.Widget
+	fileButton    *gtk.Button
+	fileEntry     *gtk.Entry
+	expectedLabel *gtk.Label
+	expectedEntry *gtk.Entry
+	md5Label      *gtk.Label
+	md5Frame      *gtk.Frame
+	md5Entry      *gtk.Entry
+	sha1Label     *gtk.Label
+	sha1Frame     *gtk.Frame
+	sha1Entry     *gtk.Entry
+	sha256Label   *gtk.Label
+	sha256Frame   *gtk.Frame
+	sha256Entry   *gtk.Entry
+	statusLabel   *gtk.Label
 }
 
 func NewMainWindow(title, filename string) *MainWindow {
@@ -101,7 +101,7 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	me.expectedEntry.SetHExpand(true)
-	me.md5LabelLabel, err = gtk.LabelNew("MD5")
+	me.md5Label, err = gtk.LabelNewWithMnemonic("MD_5")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
@@ -116,7 +116,7 @@ func (me *MainWindow) makeWidgets() {
 	}
 	prepareEntry(me.md5Entry)
 	me.md5Frame.Add(me.md5Entry)
-	me.sha1LabelLabel, err = gtk.LabelNew("SHA1")
+	me.sha1Label, err = gtk.LabelNewWithMnemonic("SHA_1")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
@@ -131,7 +131,7 @@ func (me *MainWindow) makeWidgets() {
 	}
 	prepareEntry(me.sha1Entry)
 	me.sha1Frame.Add(me.sha1Entry)
-	me.sha256LabelLabel, err = gtk.LabelNew("SHA256")
+	me.sha256Label, err = gtk.LabelNewWithMnemonic("SHA_256")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
 	}
@@ -174,11 +174,11 @@ func (me *MainWindow) makeLayout() {
 	grid.Attach(me.fileEntry, 1, 0, 1, 1)
 	grid.Attach(me.expectedLabel, 0, 1, 1, 1)
 	grid.Attach(me.expectedEntry, 1, 1, 1, 1)
-	grid.Attach(me.md5LabelLabel, 0, 2, 1, 1)
+	grid.Attach(me.md5Label, 0, 2, 1, 1)
 	grid.Attach(me.md5Frame, 1, 2, 1, 1)
-	grid.Attach(me.sha1LabelLabel, 0, 3, 1, 1)
+	grid.Attach(me.sha1Label, 0, 3, 1, 1)
 	grid.Attach(me.sha1Frame, 1, 3, 1, 1)
-	grid.Attach(me.sha256LabelLabel, 0, 4, 1, 1)
+	grid.Attach(me.sha256Label, 0, 4, 1, 1)
 	grid.Attach(me.sha256Frame, 1, 4, 1, 1)
 	grid.Attach(me.statusLabel, 1, 5, 1, 1)
 	me.container = &grid.Container.Widget
@@ -202,6 +202,18 @@ func (me *MainWindow) makeConnections(filename string) {
 	}
 	me.expectedLabel.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
 		me.expectedEntry.GrabFocus()
+		return true
+	})
+	me.md5Label.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
+		me.md5Entry.GrabFocus()
+		return true
+	})
+	me.sha1Label.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
+		me.sha1Entry.GrabFocus()
+		return true
+	})
+	me.sha256Label.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
+		me.sha256Entry.GrabFocus()
 		return true
 	})
 }
