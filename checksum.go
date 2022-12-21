@@ -16,7 +16,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path"
 	"strings"
 	"sync"
 )
@@ -71,7 +70,7 @@ func NewMainWindow(title, filename string) *MainWindow {
 	mainWindow.window.SetTitle(title)
 	mainWindow.window.SetSizeRequest(360, 120)
 	mainWindow.window.Add(mainWindow.container)
-	mainWindow.addIcon()
+	_ = mainWindow.window.SetIconFromFile("checksum.svg")
 	return mainWindow
 }
 
@@ -216,26 +215,6 @@ func (me *MainWindow) makeConnections(filename string) {
 		me.sha256Entry.GrabFocus()
 		return true
 	})
-}
-
-func (me *MainWindow) addIcon() {
-	filename, err := os.Executable()
-	if err == nil {
-		filename = path.Join(path.Dir(filename), Icon)
-		if !PathExists(filename) {
-			filename = ""
-			folder, err := os.Getwd()
-			if err == nil {
-				filename = path.Join(folder, Icon)
-			}
-		}
-		if filename != "" {
-			err := me.window.SetIconFromFile(filename)
-			if err != nil {
-				log.Println("Failed to load icon:", err)
-			}
-		}
-	}
 }
 
 func (me *MainWindow) onQuit() {
