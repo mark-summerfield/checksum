@@ -100,6 +100,7 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	me.expectedEntry.SetHExpand(true)
+	me.expectedLabel.SetMnemonicWidget(me.expectedEntry)
 	me.md5Label, err = gtk.LabelNewWithMnemonic("MD_5")
 	if err != nil {
 		log.Fatal("Failed to create widget:", err)
@@ -114,6 +115,7 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	prepareEntry(me.md5Entry)
+	me.md5Label.SetMnemonicWidget(me.md5Entry)
 	me.md5Frame.Add(me.md5Entry)
 	me.sha1Label, err = gtk.LabelNewWithMnemonic("SHA_1")
 	if err != nil {
@@ -129,6 +131,7 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	prepareEntry(me.sha1Entry)
+	me.sha1Label.SetMnemonicWidget(me.sha1Entry)
 	me.sha1Frame.Add(me.sha1Entry)
 	me.sha256Label, err = gtk.LabelNewWithMnemonic("SHA_256")
 	if err != nil {
@@ -144,6 +147,7 @@ func (me *MainWindow) makeWidgets() {
 		log.Fatal("Failed to create widget:", err)
 	}
 	prepareEntry(me.sha256Entry)
+	me.sha256Label.SetMnemonicWidget(me.sha256Entry)
 	me.sha256Frame.Add(me.sha256Entry)
 	me.statusLabel, err = gtk.LabelNew("Choose a file...")
 	if err != nil {
@@ -199,22 +203,6 @@ func (me *MainWindow) makeConnections(filename string) {
 			return true
 		})
 	}
-	me.expectedLabel.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
-		me.expectedEntry.GrabFocus()
-		return true
-	})
-	me.md5Label.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
-		me.md5Entry.GrabFocus()
-		return true
-	})
-	me.sha1Label.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
-		me.sha1Entry.GrabFocus()
-		return true
-	})
-	me.sha256Label.Connect("mnemonic-activate", func(_ *gtk.Label) bool {
-		me.sha256Entry.GrabFocus()
-		return true
-	})
 }
 
 func (me *MainWindow) onQuit() {
